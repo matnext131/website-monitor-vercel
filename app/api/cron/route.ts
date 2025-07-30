@@ -1,5 +1,5 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import { getActiveWebsites, updateWebsiteStatus } from '../lib/db'
+import { NextRequest, NextResponse } from 'next/server'
+import { getActiveWebsites, updateWebsiteStatus } from '../../../lib/db'
 import crypto from 'crypto'
 
 // ウェブサイトのコンテンツをチェックする関数
@@ -52,17 +52,13 @@ async function checkWebsiteContent(url: string): Promise<{
   }
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export async function GET(request: NextRequest) {
   // Vercel Cronからの認証チェック
-  const authHeader = req.headers.authorization
+  const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
   
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
@@ -72,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log(`📊 Found ${websites.length} active websites to check`)
 
     if (websites.length === 0) {
-      return res.status(200).json({
+      return NextResponse.json({
         message: 'No active websites to check',
         processed: 0
       })
@@ -138,7 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`✅ Monitoring completed: ${processed} processed, ${updated} updated, ${unchanged} unchanged, ${errors} errors`)
 
-    return res.status(200).json({
+    return NextResponse.json({
       message: 'Website monitoring completed',
       processed,
       updated,
@@ -149,9 +145,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Cron Error:', error)
-    return res.status(500).json({
-      error: 'Scheduled monitoring failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    })
+    return NextResponse.json(
+      {
+        error: 'Scheduled monitoring failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
   }
+}
+
+export async function POST(request: NextRequest) {
+  return GET(request)
 }

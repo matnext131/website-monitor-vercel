@@ -1,5 +1,5 @@
-import { NextApiRequest, NextApiResponse } from 'next'
-import { getWebsite, updateWebsiteStatus } from '../lib/db'
+import { NextRequest, NextResponse } from 'next/server'
+import { getWebsite, updateWebsiteStatus } from '../../../lib/db'
 import crypto from 'crypto'
 
 // ウェブサイトのコンテンツをチェックする関数
@@ -52,34 +52,24 @@ async function checkWebsiteContent(url: string): Promise<{
   }
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // CORS設定
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end()
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    const { id } = req.query
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
 
     if (!id || isNaN(Number(id))) {
-      return res.status(400).json({
-        error: '有効なIDを指定してください'
-      })
+      return NextResponse.json(
+        { error: '有効なIDを指定してください' },
+        { status: 400 }
+      )
     }
 
     const website = await getWebsite(Number(id))
     if (!website) {
-      return res.status(404).json({
-        error: 'ウェブサイトが見つかりません'
-      })
+      return NextResponse.json(
+        { error: 'ウェブサイトが見つかりません' },
+        { status: 404 }
+      )
     }
 
     console.log(`🔍 Checking website: ${website.name} (${website.url})`)
@@ -114,12 +104,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       checkResult.errorMessage
     )
 
-    return res.status(200).json(updatedWebsite)
+    return NextResponse.json(updatedWebsite)
 
   } catch (error) {
     console.error('Check Error:', error)
-    return res.status(500).json({
-      error: 'サーバーエラーが発生しました'
-    })
+    return NextResponse.json(
+      { error: 'サーバーエラーが発生しました' },
+      { status: 500 }
+    )
   }
 }
