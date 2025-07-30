@@ -29,10 +29,19 @@ export interface WebsiteCreate {
 
 // ウェブサイト一覧を取得
 export async function getWebsites(): Promise<Website[]> {
-  const result = await pool.query(
-    'SELECT * FROM websites ORDER BY updated_at DESC'
-  )
-  return result.rows
+  console.log('DB: Starting getWebsites query')
+  console.log('DB: DATABASE_URL configured:', !!process.env.DATABASE_URL)
+  
+  try {
+    const result = await pool.query(
+      'SELECT * FROM websites ORDER BY updated_at DESC'
+    )
+    console.log('DB: Query successful, rows:', result.rows.length)
+    return result.rows
+  } catch (error) {
+    console.error('DB: Query failed:', error)
+    throw error
+  }
 }
 
 // ウェブサイトを追加

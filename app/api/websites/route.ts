@@ -3,15 +3,31 @@ import { getWebsites, createWebsite, WebsiteCreate } from '../../../lib/db'
 
 export async function GET() {
   try {
+    console.log('API: Starting websites GET request')
+    console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL)
+    console.log('DATABASE_URL length:', process.env.DATABASE_URL?.length || 0)
+    
     const websites = await getWebsites()
+    console.log('API: Successfully fetched websites:', websites.length)
+    
     return NextResponse.json({
       websites,
       total: websites.length
     })
   } catch (error: any) {
     console.error('API Error:', error)
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    })
+    
     return NextResponse.json(
-      { error: 'サーバーエラーが発生しました' },
+      { 
+        error: 'サーバーエラーが発生しました',
+        details: error.message 
+      },
       { status: 500 }
     )
   }
