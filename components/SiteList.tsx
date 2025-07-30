@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Website } from '@/types'
+import { Website } from '../types'
 import StatusBadge from './StatusBadge'
 import { format } from 'date-fns'
 

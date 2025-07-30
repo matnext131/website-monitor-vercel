@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Website, WebsiteListResponse } from '@/types'
-import SiteList from '@/components/SiteList'
-import AddSiteForm from '@/components/AddSiteForm'
+import { Website, WebsiteListResponse } from '../types'
+import SiteList from '../components/SiteList'
+import AddSiteForm from '../components/AddSiteForm'
 
 export default function HomePage() {
   const [websites, setWebsites] = useState<Website[]>([])

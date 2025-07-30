@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { WebsiteCreate } from '@/types'
+import { WebsiteCreate } from '../types'
 
 interface AddSiteFormProps {
   onSiteAdded: () => void

@@ -1,4 +1,4 @@
-import { Website } from '@/types'
+import { Website } from '../types'
 
 interface StatusBadgeProps {
   website: Website
