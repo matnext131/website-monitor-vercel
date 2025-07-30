@@ -1,1 +1,2 @@
-Force redeploy to apply DATABASE_URL environment variable
+Force redeploy to fix ES Modules error and clear build cache
+Timestamp: 2025-07-30 23:10:00
