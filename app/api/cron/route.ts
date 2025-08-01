@@ -90,8 +90,10 @@ export async function GET(request: NextRequest) {
         // エラーでない場合、前回のハッシュと比較
         if (checkResult.status !== 'error' && checkResult.contentHash) {
           if (!website.content_hash) {
-            // 初回チェック
-            finalStatus = 'unchanged'
+            // 初回チェック - 新規コンテンツとして扱う
+            finalStatus = 'updated'
+            updated++
+            console.log(`🆕 First check: ${website.name}`)
           } else if (website.content_hash !== checkResult.contentHash) {
             // コンテンツが変更された
             finalStatus = 'updated'
