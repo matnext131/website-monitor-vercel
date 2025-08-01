@@ -60,6 +60,39 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
     }
   }
 
+  const handleDebugCheck = async (id: number) => {
+    setLoadingStates(prev => ({ ...prev, [`debug_${id}`]: true }))
+    
+    try {
+      const response = await fetch(`/api/debug-check?id=${id}`)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'デバッグチェックに失敗しました')
+      }
+
+      const result = await response.json()
+      console.log('Debug check result:', result)
+      
+      // 結果をアラートで表示
+      const message = `
+デバッグ結果:
+サイト: ${result.website.name}
+現在のハッシュ: ${result.current_check.contentHash?.substring(0, 16)}...
+保存済みハッシュ: ${result.website.stored_hash?.substring(0, 16) || 'なし'}...
+比較結果: ${result.hash_comparison}
+更新検知: ${result.would_trigger_update ? 'はい' : 'いいえ'}
+コンテンツ長: ${result.current_check.contentLength} 文字
+      `.trim()
+      
+      alert(message)
+    } catch (error) {
+      alert('デバッグチェックに失敗しました: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [`debug_${id}`]: false }))
+    }
+  }
+
   const formatDate = (dateString: Date | string | null) => {
     if (!dateString) return '-'
     try {
@@ -127,7 +160,7 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
                   <StatusBadge website={website} />
                 </td>
                 <td className="px-4 py-4 text-right">
-                  <div className="flex items-center justify-end space-x-2">
+                  <div className="flex items-center justify-end space-x-1">
                     <button
                       onClick={() => handleManualCheck(website.id)}
                       disabled={loadingStates[`check_${website.id}`]}
@@ -138,6 +171,18 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
                       ) : (
                         '🔍'
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleDebugCheck(website.id)}
+                      disabled={loadingStates[`debug_${website.id}`]}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50"
+                      title="診断チェック"
+                    >
+                      {loadingStates[`debug_${website.id}`] ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      ) : (
+                        '🩺'
                       )}
                     </button>
                     <button
