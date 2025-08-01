@@ -74,15 +74,35 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
       const result = await response.json()
       console.log('Debug check result:', result)
       
-      // 結果をアラートで表示
+      // 結果をコンソールとアラートの両方に表示
+      const debugInfo = {
+        サイト名: result.website.name,
+        URL: result.website.url,
+        監視モード: result.website.monitor_mode || 'full',
+        現在のハッシュ: result.current_check.contentHash,
+        保存済みハッシュ: result.website.stored_hash,
+        比較結果: result.hash_comparison,
+        更新検知: result.would_trigger_update ? 'はい' : 'いいえ',
+        コンテンツ長: result.current_check.contentLength,
+        最終チェック: result.website.last_checked,
+        エラー: result.current_check.errorMessage || 'なし'
+      }
+      
+      console.log('=== 診断結果（コピー可能） ===')
+      console.log(JSON.stringify(debugInfo, null, 2))
+      console.log('================================')
+      
       const message = `
 デバッグ結果:
 サイト: ${result.website.name}
+監視モード: ${result.website.monitor_mode || 'full'}
 現在のハッシュ: ${result.current_check.contentHash?.substring(0, 16)}...
-保存済みハッシュ: ${result.website.stored_hash?.substring(0, 16) || 'なし'}...
+保存済みハッシュ: ${result.website.stored_hash?.substring(0, 16) || 'なし'}...  
 比較結果: ${result.hash_comparison}
 更新検知: ${result.would_trigger_update ? 'はい' : 'いいえ'}
 コンテンツ長: ${result.current_check.contentLength} 文字
+
+※詳細はブラウザのコンソール（F12）で確認可能
       `.trim()
       
       alert(message)
