@@ -73,8 +73,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`🔍 Checking website: ${website.name} (${website.url})`)
+    console.log(`Current hash: ${website.content_hash || 'null'}`)
 
     const checkResult = await checkWebsiteContent(website.url)
+    console.log(`Check result:`, checkResult)
     
     let finalStatus = checkResult.status
     
@@ -98,6 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     // データベースを更新
+    console.log(`Updating database with status: ${finalStatus}`)
     const updatedWebsite = await updateWebsiteStatus(
       Number(id),
       finalStatus,
@@ -105,6 +108,7 @@ export async function POST(request: NextRequest) {
       checkResult.errorMessage
     )
 
+    console.log(`Updated website:`, updatedWebsite)
     return NextResponse.json(updatedWebsite)
 
   } catch (error) {
