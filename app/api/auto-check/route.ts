@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getActiveWebsites, updateWebsiteStatus } from '../../../lib/db'
 import crypto from 'crypto'
 
@@ -14,7 +14,7 @@ async function checkWebsiteContent(url: string): Promise<{
       headers: {
         'User-Agent': 'Website Monitor Bot 1.0'
       },
-      signal: AbortSignal.timeout(25000) // 25秒タイムアウト（Vercel制限考慮）
+      signal: AbortSignal.timeout(25000)
     })
 
     if (!response.ok) {
@@ -29,7 +29,7 @@ async function checkWebsiteContent(url: string): Promise<{
 
     return {
       contentHash,
-      status: 'unchanged' // 後で前回のハッシュと比較して決定
+      status: 'unchanged'
     }
 
   } catch (error: any) {
@@ -52,17 +52,9 @@ async function checkWebsiteContent(url: string): Promise<{
   }
 }
 
-export async function GET(request: NextRequest) {
-  // Vercel Cronからの認証チェック
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+export async function GET() {
   try {
-    console.log('🚀 Starting scheduled website monitoring...')
+    console.log('🚀 Starting auto-check for all websites...')
     
     const websites = await getActiveWebsites()
     console.log(`📊 Found ${websites.length} active websites to check`)
@@ -79,10 +71,10 @@ export async function GET(request: NextRequest) {
     let unchanged = 0
     let errors = 0
 
-    // 各ウェブサイトを順次チェック（並列処理だとタイムアウトの可能性）
+    // 各ウェブサイトを順次チェック
     for (const website of websites) {
       try {
-        console.log(`🔍 Checking: ${website.name} (${website.url})`)
+        console.log(`🔍 Auto-checking: ${website.name} (${website.url})`)
         
         const checkResult = await checkWebsiteContent(website.url)
         let finalStatus = checkResult.status
@@ -93,12 +85,12 @@ export async function GET(request: NextRequest) {
             // 初回チェック - ベースラインとして保存
             finalStatus = 'unchanged'
             unchanged++
-            console.log(`🆕 First cron check (baseline): ${website.name}`)
+            console.log(`🆕 First auto-check (baseline): ${website.name}`)
           } else if (website.content_hash !== checkResult.contentHash) {
             // コンテンツが変更された
             finalStatus = 'updated'
             updated++
-            console.log(`✅ Cron detected update: ${website.name}`)
+            console.log(`✅ Auto-detected update: ${website.name}`)
           } else {
             // コンテンツ変更なし
             finalStatus = 'unchanged'
@@ -107,7 +99,7 @@ export async function GET(request: NextRequest) {
           }
         } else if (checkResult.status === 'error') {
           errors++
-          console.log(`❌ Cron error: ${website.name} - ${checkResult.errorMessage}`)
+          console.log(`❌ Auto-check error: ${website.name} - ${checkResult.errorMessage}`)
         }
 
         // データベースを更新
@@ -121,10 +113,9 @@ export async function GET(request: NextRequest) {
         processed++
 
       } catch (error) {
-        console.error(`Error checking ${website.name}:`, error)
+        console.error(`Error auto-checking ${website.name}:`, error)
         errors++
         
-        // エラーの場合もデータベースを更新
         await updateWebsiteStatus(
           website.id,
           'error',
@@ -134,10 +125,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`✅ Monitoring completed: ${processed} processed, ${updated} updated, ${unchanged} unchanged, ${errors} errors`)
+    console.log(`✅ Auto-check completed: ${processed} processed, ${updated} updated, ${unchanged} unchanged, ${errors} errors`)
 
     return NextResponse.json({
-      message: 'Website monitoring completed',
+      message: 'Auto-check completed',
       processed,
       updated,
       unchanged,
@@ -146,17 +137,13 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Cron Error:', error)
+    console.error('Auto-check Error:', error)
     return NextResponse.json(
       {
-        error: 'Scheduled monitoring failed',
+        error: 'Auto-check failed',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )
   }
-}
-
-export async function POST(request: NextRequest) {
-  return GET(request)
 }

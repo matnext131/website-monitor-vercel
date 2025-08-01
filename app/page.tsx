@@ -32,6 +32,32 @@ export default function HomePage() {
 
   useEffect(() => {
     loadWebsites()
+    
+    // 10分ごとに自動チェック実行
+    const autoCheckInterval = setInterval(async () => {
+      console.log('Running auto-check...')
+      try {
+        const response = await fetch('/api/auto-check')
+        const result = await response.json()
+        console.log('Auto-check result:', result)
+        
+        // 自動チェック後にデータを再読み込み
+        loadWebsites()
+      } catch (error) {
+        console.error('Auto-check failed:', error)
+      }
+    }, 10 * 60 * 1000) // 10分 = 600,000ms
+    
+    // 3分ごとにデータ更新（画面リフレッシュ）
+    const refreshInterval = setInterval(() => {
+      console.log('Refreshing website data...')
+      loadWebsites()
+    }, 3 * 60 * 1000) // 3分 = 180,000ms
+    
+    return () => {
+      clearInterval(autoCheckInterval)
+      clearInterval(refreshInterval)
+    }
   }, [])
 
   const handleSiteAdded = () => {

@@ -83,9 +83,9 @@ export async function POST(request: NextRequest) {
     // エラーでない場合、前回のハッシュと比較
     if (checkResult.status !== 'error' && checkResult.contentHash) {
       if (!website.content_hash) {
-        // 初回チェック - 新規コンテンツとして扱う
-        finalStatus = 'updated'
-        console.log(`🆕 First check: ${website.name}`)
+        // 初回チェック - ベースラインとして保存、ステータスは変更しない
+        finalStatus = 'unchanged'
+        console.log(`🆕 First check (baseline): ${website.name}`)
       } else if (website.content_hash !== checkResult.contentHash) {
         // コンテンツが変更された
         finalStatus = 'updated'
