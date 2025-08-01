@@ -55,6 +55,7 @@ async function checkWebsiteContent(url: string): Promise<{
 export async function GET() {
   try {
     console.log('🚀 Starting auto-check for all websites...')
+    console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL)
     
     const websites = await getActiveWebsites()
     console.log(`📊 Found ${websites.length} active websites to check`)

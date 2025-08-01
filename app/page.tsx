@@ -33,7 +33,7 @@ export default function HomePage() {
   useEffect(() => {
     loadWebsites()
     
-    // 10分ごとに自動チェック実行
+    // 2分ごとに自動チェック実行（テスト用）
     const autoCheckInterval = setInterval(async () => {
       console.log('Running auto-check...')
       try {
@@ -46,13 +46,13 @@ export default function HomePage() {
       } catch (error) {
         console.error('Auto-check failed:', error)
       }
-    }, 10 * 60 * 1000) // 10分 = 600,000ms
+    }, 2 * 60 * 1000) // 2分 = 120,000ms
     
-    // 3分ごとにデータ更新（画面リフレッシュ）
+    // 1分ごとにデータ更新（画面リフレッシュ）
     const refreshInterval = setInterval(() => {
       console.log('Refreshing website data...')
       loadWebsites()
-    }, 3 * 60 * 1000) // 3分 = 180,000ms
+    }, 1 * 60 * 1000) // 1分 = 60,000ms
     
     return () => {
       clearInterval(autoCheckInterval)
@@ -66,6 +66,20 @@ export default function HomePage() {
 
   const handleSiteDeleted = () => {
     loadWebsites()
+  }
+
+  const handleManualAutoCheck = async () => {
+    console.log('Manual auto-check triggered...')
+    try {
+      const response = await fetch('/api/auto-check')
+      const result = await response.json()
+      console.log('Manual auto-check result:', result)
+      
+      // 自動チェック後にデータを再読み込み
+      loadWebsites()
+    } catch (error) {
+      console.error('Manual auto-check failed:', error)
+    }
   }
 
   if (loading) {
@@ -126,13 +140,22 @@ export default function HomePage() {
               <h2 className="text-lg font-semibold text-gray-900">
                 🌐 監視中のサイト一覧
               </h2>
-              <button
-                onClick={loadWebsites}
-                className="btn-secondary text-sm"
-                disabled={loading}
-              >
-                🔄 更新
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleManualAutoCheck}
+                  className="btn-secondary text-sm"
+                  disabled={loading}
+                >
+                  🤖 全自動チェック
+                </button>
+                <button
+                  onClick={loadWebsites}
+                  className="btn-secondary text-sm"
+                  disabled={loading}
+                >
+                  🔄 更新
+                </button>
+              </div>
             </div>
             <SiteList 
               websites={websites} 
