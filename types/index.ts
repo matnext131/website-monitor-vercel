@@ -8,6 +8,7 @@ export interface Website {
   status: 'pending' | 'updated' | 'unchanged' | 'error'
   is_active: boolean
   error_message: string | null
+  monitor_mode: 'full' | 'content'
   created_at: Date
   updated_at: Date
 }
@@ -15,6 +16,7 @@ export interface Website {
 export interface WebsiteCreate {
   name: string
   url: string
+  monitor_mode?: 'full' | 'content'
 }
 
 export interface WebsiteListResponse {

@@ -131,6 +131,9 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 ステータス
               </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                監視モード
+              </th>
               <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 操作
               </th>
@@ -158,6 +161,15 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
                 </td>
                 <td className="px-4 py-4">
                   <StatusBadge website={website} />
+                </td>
+                <td className="px-4 py-4 text-sm">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    website.monitor_mode === 'content' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {website.monitor_mode === 'content' ? '📝 コンテンツのみ' : '🌐 全体監視'}
+                  </span>
                 </td>
                 <td className="px-4 py-4 text-right">
                   <div className="flex items-center justify-end space-x-1">

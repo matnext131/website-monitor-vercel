@@ -18,6 +18,7 @@ export interface Website {
   status: 'pending' | 'updated' | 'unchanged' | 'error'
   is_active: boolean
   error_message: string | null
+  monitor_mode: 'full' | 'content'
   created_at: Date
   updated_at: Date
 }
@@ -25,6 +26,7 @@ export interface Website {
 export interface WebsiteCreate {
   name: string
   url: string
+  monitor_mode?: 'full' | 'content'
 }
 
 // ウェブサイト一覧を取得
@@ -45,12 +47,12 @@ export async function getWebsites(): Promise<Website[]> {
 }
 
 // ウェブサイトを追加
-export async function createWebsite({ name, url }: WebsiteCreate): Promise<Website> {
+export async function createWebsite({ name, url, monitor_mode = 'full' }: WebsiteCreate): Promise<Website> {
   const result = await pool.query(
-    `INSERT INTO websites (name, url) 
-     VALUES ($1, $2) 
+    `INSERT INTO websites (name, url, monitor_mode) 
+     VALUES ($1, $2, $3) 
      RETURNING *`,
-    [name, url]
+    [name, url, monitor_mode]
   )
   return result.rows[0]
 }

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getWebsite, updateWebsiteStatus } from '../../../lib/db'
+import { extractContentOnly, getCustomContentFilter } from '../../../lib/content-filter'
 import crypto from 'crypto'
 
 // ウェブサイトのコンテンツをチェックする関数
-async function checkWebsiteContent(url: string): Promise<{
+async function checkWebsiteContent(url: string, monitorMode: 'full' | 'content' = 'full'): Promise<{
   contentHash?: string
   status: 'updated' | 'unchanged' | 'error'
   errorMessage?: string
@@ -24,7 +25,20 @@ async function checkWebsiteContent(url: string): Promise<{
       }
     }
 
-    const content = await response.text()
+    let content = await response.text()
+    
+    // 監視モードに応じてコンテンツを処理
+    if (monitorMode === 'content') {
+      const customFilter = getCustomContentFilter(url)
+      if (customFilter) {
+        content = customFilter(content)
+        console.log(`Applied custom filter for ${url}`)
+      } else {
+        content = extractContentOnly(content)
+        console.log(`Applied general content filter for ${url}`)
+      }
+    }
+    
     const contentHash = crypto.createHash('sha256').update(content).digest('hex')
 
     return {
@@ -73,9 +87,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`🔍 Checking website: ${website.name} (${website.url})`)
+    console.log(`Monitor mode: ${website.monitor_mode || 'full'}`)
     console.log(`Current hash: ${website.content_hash || 'null'}`)
 
-    const checkResult = await checkWebsiteContent(website.url)
+    const checkResult = await checkWebsiteContent(website.url, website.monitor_mode || 'full')
     console.log(`Check result:`, checkResult)
     
     let finalStatus = checkResult.status

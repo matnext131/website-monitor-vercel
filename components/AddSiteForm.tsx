@@ -10,7 +10,8 @@ interface AddSiteFormProps {
 export default function AddSiteForm({ onSiteAdded }: AddSiteFormProps) {
   const [formData, setFormData] = useState<WebsiteCreate>({
     name: '',
-    url: ''
+    url: '',
+    monitor_mode: 'full'
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,7 +35,7 @@ export default function AddSiteForm({ onSiteAdded }: AddSiteFormProps) {
         throw new Error(errorData.error || 'サイトの追加に失敗しました')
       }
 
-      setFormData({ name: '', url: '' })
+      setFormData({ name: '', url: '', monitor_mode: 'full' })
       onSiteAdded()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'サイトの追加に失敗しました')
@@ -43,7 +44,7 @@ export default function AddSiteForm({ onSiteAdded }: AddSiteFormProps) {
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -89,6 +90,25 @@ export default function AddSiteForm({ onSiteAdded }: AddSiteFormProps) {
           placeholder="https://example.com"
           required
         />
+      </div>
+
+      <div>
+        <label htmlFor="monitor_mode" className="block text-sm font-medium text-gray-700 mb-1">
+          監視モード
+        </label>
+        <select
+          id="monitor_mode"
+          name="monitor_mode"
+          value={formData.monitor_mode}
+          onChange={handleChange}
+          className="input-field"
+        >
+          <option value="full">🌐 全体監視（従来）</option>
+          <option value="content">📝 コンテンツのみ（広告除外）</option>
+        </select>
+        <p className="text-xs text-gray-500 mt-1">
+          コンテンツのみ：広告やトラッキングを除外し、記事内容の変更のみを検知
+        </p>
       </div>
 
       <button
