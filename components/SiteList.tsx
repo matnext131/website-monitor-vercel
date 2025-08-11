@@ -139,22 +139,19 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 サイト名
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                URL
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell hidden">
                 最終チェック
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 ステータス
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell hidden">
                 監視モード
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 操作
               </th>
             </tr>
@@ -162,27 +159,38 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
           <tbody className="bg-white divide-y divide-gray-200">
             {websites.map((website) => (
               <tr key={website.id} className="hover:bg-gray-50">
-                <td className="px-4 py-4">
-                  <div className="font-medium text-gray-900">{website.name}</div>
+                <td className="px-3 py-4">
+                  <div className="space-y-1">
+                    <a
+                      href={website.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-primary-600 hover:text-primary-800 hover:underline block"
+                      title={`${website.name} - ${website.url}`}
+                    >
+                      {website.name}
+                    </a>
+                    <div className="text-xs text-gray-500 sm:hidden">
+                      {formatDate(website.last_checked)}
+                    </div>
+                    <div className="sm:hidden">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        website.monitor_mode === 'content' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {website.monitor_mode === 'content' ? '📝 コンテンツのみ' : '🌐 全体監視'}
+                      </span>
+                    </div>
+                  </div>
                 </td>
-                <td className="px-4 py-4">
-                  <a
-                    href={website.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary-600 hover:text-primary-800 text-sm truncate max-w-xs block"
-                    title={website.url}
-                  >
-                    {website.url}
-                  </a>
-                </td>
-                <td className="px-4 py-4 text-sm text-gray-500">
+                <td className="px-3 py-4 text-sm text-gray-500 sm:table-cell hidden">
                   {formatDate(website.last_checked)}
                 </td>
-                <td className="px-4 py-4">
+                <td className="px-3 py-4">
                   <StatusBadge website={website} />
                 </td>
-                <td className="px-4 py-4 text-sm">
+                <td className="px-3 py-4 text-sm sm:table-cell hidden">
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                     website.monitor_mode === 'content' 
                       ? 'bg-blue-100 text-blue-800' 
@@ -191,7 +199,7 @@ export default function SiteList({ websites, onSiteDeleted, onRefresh }: SiteLis
                     {website.monitor_mode === 'content' ? '📝 コンテンツのみ' : '🌐 全体監視'}
                   </span>
                 </td>
-                <td className="px-4 py-4 text-right">
+                <td className="px-3 py-4 text-right">
                   <div className="flex items-center justify-end space-x-1">
                     <button
                       onClick={() => handleManualCheck(website.id)}
