@@ -10,15 +10,19 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadWebsites = async () => {
+  // showLoading は初回表示のみ true にし、定期更新では画面全体を
+  // ローディング表示に置き換えない
+  const loadWebsites = async (showLoading = false) => {
     try {
-      setLoading(true)
+      if (showLoading) {
+        setLoading(true)
+      }
       const response = await fetch('/api/websites')
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch websites')
       }
-      
+
       const data: WebsiteListResponse = await response.json()
       setWebsites(data.websites)
       setError(null)
@@ -31,7 +35,7 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    loadWebsites()
+    loadWebsites(true)
     
     // 2分ごとに自動チェック実行（テスト用）
     const autoCheckInterval = setInterval(async () => {
@@ -149,7 +153,7 @@ export default function HomePage() {
                   🤖 全自動チェック
                 </button>
                 <button
-                  onClick={loadWebsites}
+                  onClick={() => loadWebsites()}
                   className="btn-secondary text-sm"
                   disabled={loading}
                 >

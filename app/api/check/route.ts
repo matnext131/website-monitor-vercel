@@ -1,70 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getWebsite, updateWebsiteStatus } from '../../../lib/db'
-import { extractContentOnly, getCustomContentFilter } from '../../../lib/content-filter'
-import crypto from 'crypto'
+import { getWebsite } from '../../../lib/db'
+import { checkAndUpdateWebsite } from '../../../lib/checker'
 
-// ウェブサイトのコンテンツをチェックする関数
-async function checkWebsiteContent(url: string, monitorMode: 'full' | 'content' = 'full'): Promise<{
-  contentHash?: string
-  status: 'updated' | 'unchanged' | 'error'
-  errorMessage?: string
-}> {
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Website Monitor Bot 1.0'
-      },
-      signal: AbortSignal.timeout(30000) // 30秒タイムアウト
-    })
-
-    if (!response.ok) {
-      return {
-        status: 'error',
-        errorMessage: `HTTP ${response.status}: ${response.statusText}`
-      }
-    }
-
-    let content = await response.text()
-    
-    // 監視モードに応じてコンテンツを処理
-    if (monitorMode === 'content') {
-      const customFilter = getCustomContentFilter(url)
-      if (customFilter) {
-        content = customFilter(content)
-        console.log(`Applied custom filter for ${url}`)
-      } else {
-        content = extractContentOnly(content)
-        console.log(`Applied general content filter for ${url}`)
-      }
-    }
-    
-    const contentHash = crypto.createHash('sha256').update(content).digest('hex')
-
-    return {
-      contentHash,
-      status: 'unchanged' // 後で前回のハッシュと比較して決定
-    }
-
-  } catch (error: any) {
-    let errorMessage = 'Unknown error'
-    
-    if (error.name === 'AbortError') {
-      errorMessage = 'タイムアウトエラー'
-    } else if (error.code === 'ENOTFOUND') {
-      errorMessage = 'ドメインが見つかりません'
-    } else if (error.code === 'ECONNREFUSED') {
-      errorMessage = '接続が拒否されました'
-    } else {
-      errorMessage = error.message || 'ネットワークエラー'
-    }
-
-    return {
-      status: 'error',
-      errorMessage
-    }
-  }
-}
+// 手動チェック用エンドポイント
+export const dynamic = 'force-dynamic'
+export const maxDuration = 30
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,44 +26,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`🔍 Checking website: ${website.name} (${website.url})`)
-    console.log(`Monitor mode: ${website.monitor_mode || 'full'}`)
-    console.log(`Current hash: ${website.content_hash || 'null'}`)
+    console.log(`🔍 Checking website: ${website.name} (${website.url}) [${website.monitor_mode || 'full'}]`)
 
-    const checkResult = await checkWebsiteContent(website.url, website.monitor_mode || 'full')
-    console.log(`Check result:`, checkResult)
-    
-    let finalStatus = checkResult.status
-    
-    // エラーでない場合、前回のハッシュと比較
-    if (checkResult.status !== 'error' && checkResult.contentHash) {
-      if (!website.content_hash) {
-        // 初回チェック - ベースラインとして保存、ステータスは変更しない
-        finalStatus = 'unchanged'
-        console.log(`🆕 First check (baseline): ${website.name}`)
-      } else if (website.content_hash !== checkResult.contentHash) {
-        // コンテンツが変更された
-        finalStatus = 'updated'
-        console.log(`✅ Website updated: ${website.name}`)
-      } else {
-        // コンテンツ変更なし
-        finalStatus = 'unchanged'
-        console.log(`⚪ Website unchanged: ${website.name}`)
-      }
-    } else if (checkResult.status === 'error') {
+    // 手動チェックは「更新確認済み」とみなし、変化がなければ unchanged に戻す
+    const { finalStatus, contentChanged, checkResult, updatedWebsite } =
+      await checkAndUpdateWebsite(website, { acknowledgeUpdate: true, timeoutMs: 25000 })
+
+    if (finalStatus === 'error') {
       console.log(`❌ Website error: ${website.name} - ${checkResult.errorMessage}`)
+    } else if (contentChanged) {
+      console.log(`✅ Website updated: ${website.name}`)
+    } else {
+      console.log(`⚪ Website unchanged: ${website.name}`)
     }
 
-    // データベースを更新
-    console.log(`Updating database with status: ${finalStatus}`)
-    const updatedWebsite = await updateWebsiteStatus(
-      Number(id),
-      finalStatus,
-      checkResult.contentHash,
-      checkResult.errorMessage
-    )
-
-    console.log(`Updated website:`, updatedWebsite)
     return NextResponse.json(updatedWebsite)
 
   } catch (error) {

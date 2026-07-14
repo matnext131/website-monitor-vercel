@@ -10,6 +10,7 @@ CREATE TABLE websites (
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'updated', 'unchanged', 'error')),
   is_active BOOLEAN DEFAULT true,
   error_message TEXT DEFAULT NULL,
+  monitor_mode VARCHAR(10) NOT NULL DEFAULT 'full' CHECK (monitor_mode IN ('full', 'content')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -18,3 +19,8 @@ CREATE TABLE websites (
 CREATE INDEX idx_websites_status ON websites(status);
 CREATE INDEX idx_websites_is_active ON websites(is_active);
 CREATE INDEX idx_websites_updated_at ON websites(updated_at DESC);
+
+-- ============================================================
+-- 既存のテーブルに monitor_mode カラムがない場合は、
+-- migration.sql（冪等・複数回実行可）を実行してください。
+-- ============================================================

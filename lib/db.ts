@@ -63,26 +63,29 @@ export async function deleteWebsite(id: number): Promise<boolean> {
     'DELETE FROM websites WHERE id = $1',
     [id]
   )
-  return result.rowCount > 0
+  return (result.rowCount ?? 0) > 0
 }
 
 // ウェブサイトのステータスを更新
+// contentChanged=true のとき last_modified に更新検知日時を記録する
 export async function updateWebsiteStatus(
   id: number,
   status: Website['status'],
   contentHash?: string,
-  errorMessage?: string
+  errorMessage?: string,
+  contentChanged = false
 ): Promise<Website | null> {
   const result = await pool.query(
-    `UPDATE websites 
-     SET status = $1, 
+    `UPDATE websites
+     SET status = $1,
          last_checked = NOW(),
          content_hash = COALESCE($2, content_hash),
          error_message = $3,
+         last_modified = CASE WHEN $4 THEN NOW() ELSE last_modified END,
          updated_at = NOW()
-     WHERE id = $4 
+     WHERE id = $5
      RETURNING *`,
-    [status, contentHash, errorMessage, id]
+    [status, contentHash, errorMessage, contentChanged, id]
   )
   return result.rows[0] || null
 }

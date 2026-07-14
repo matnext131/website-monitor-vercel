@@ -1,69 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getActiveWebsites, updateWebsiteStatus } from '../../../lib/db'
-import crypto from 'crypto'
+import { getActiveWebsites } from '../../../lib/db'
+import { checkWebsitesInBatches } from '../../../lib/checker'
 
-// ウェブサイトのコンテンツをチェックする関数
-async function checkWebsiteContent(url: string): Promise<{
-  contentHash?: string
-  status: 'updated' | 'unchanged' | 'error'
-  errorMessage?: string
-}> {
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Website Monitor Bot 1.0'
-      },
-      signal: AbortSignal.timeout(25000) // 25秒タイムアウト（Vercel制限考慮）
-    })
-
-    if (!response.ok) {
-      return {
-        status: 'error',
-        errorMessage: `HTTP ${response.status}: ${response.statusText}`
-      }
-    }
-
-    const content = await response.text()
-    const contentHash = crypto.createHash('sha256').update(content).digest('hex')
-
-    return {
-      contentHash,
-      status: 'unchanged' // 後で前回のハッシュと比較して決定
-    }
-
-  } catch (error: any) {
-    let errorMessage = 'Unknown error'
-    
-    if (error.name === 'AbortError') {
-      errorMessage = 'タイムアウトエラー'
-    } else if (error.code === 'ENOTFOUND') {
-      errorMessage = 'ドメインが見つかりません'
-    } else if (error.code === 'ECONNREFUSED') {
-      errorMessage = '接続が拒否されました'
-    } else {
-      errorMessage = error.message || 'ネットワークエラー'
-    }
-
-    return {
-      status: 'error',
-      errorMessage
-    }
-  }
-}
+// Vercel Cron から呼ばれる定期監視エンドポイント
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 export async function GET(request: NextRequest) {
-  // Vercel Cronからの認証チェック
+  // Vercel Cron は環境変数 CRON_SECRET を設定すると
+  // 「Authorization: Bearer <CRON_SECRET>」ヘッダーを自動で付与する。
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
-  
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+
+  if (process.env.NODE_ENV === 'production') {
+    // 本番では CRON_SECRET を必須とし、未設定なら処理を実行しない
+    if (!cronSecret) {
+      console.error('CRON_SECRET is not configured. Set it in Vercel project settings.')
+      return NextResponse.json(
+        { error: 'CRON_SECRET is not configured' },
+        { status: 500 }
+      )
+    }
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  } else if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // ローカル開発では CRON_SECRET を設定した場合のみ照合する
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
     console.log('🚀 Starting scheduled website monitoring...')
-    
+
     const websites = await getActiveWebsites()
     console.log(`📊 Found ${websites.length} active websites to check`)
 
@@ -74,84 +42,28 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    let processed = 0
-    let updated = 0
-    let unchanged = 0
-    let errors = 0
+    // 並列数を絞りつつ時間予算内でチェック（maxDuration 60秒を超えないように）
+    const summary = await checkWebsitesInBatches(websites, {
+      concurrency: 3,
+      timeBudgetMs: 45000,
+      timeoutMs: 15000
+    })
 
-    // 各ウェブサイトを順次チェック（並列処理だとタイムアウトの可能性）
-    for (const website of websites) {
-      try {
-        console.log(`🔍 Checking: ${website.name} (${website.url})`)
-        
-        const checkResult = await checkWebsiteContent(website.url)
-        let finalStatus = checkResult.status
-        
-        // エラーでない場合、前回のハッシュと比較
-        if (checkResult.status !== 'error' && checkResult.contentHash) {
-          if (!website.content_hash) {
-            // 初回チェック - ベースラインとして保存
-            finalStatus = 'unchanged'
-            unchanged++
-            console.log(`🆕 First cron check (baseline): ${website.name}`)
-          } else if (website.content_hash !== checkResult.contentHash) {
-            // コンテンツが変更された
-            finalStatus = 'updated'
-            updated++
-            console.log(`✅ Cron detected update: ${website.name}`)
-          } else {
-            // コンテンツ変更なし
-            finalStatus = 'unchanged'
-            unchanged++
-            console.log(`⚪ No change: ${website.name}`)
-          }
-        } else if (checkResult.status === 'error') {
-          errors++
-          console.log(`❌ Cron error: ${website.name} - ${checkResult.errorMessage}`)
-        }
-
-        // データベースを更新
-        await updateWebsiteStatus(
-          website.id,
-          finalStatus,
-          checkResult.contentHash,
-          checkResult.errorMessage
-        )
-
-        processed++
-
-      } catch (error) {
-        console.error(`Error checking ${website.name}:`, error)
-        errors++
-        
-        // エラーの場合もデータベースを更新
-        await updateWebsiteStatus(
-          website.id,
-          'error',
-          undefined,
-          'Internal monitoring error'
-        )
-      }
-    }
-
-    console.log(`✅ Monitoring completed: ${processed} processed, ${updated} updated, ${unchanged} unchanged, ${errors} errors`)
+    console.log(
+      `✅ Monitoring completed: ${summary.processed} processed, ${summary.updated} updated, ` +
+      `${summary.unchanged} unchanged, ${summary.errors} errors, ${summary.skipped} skipped`
+    )
 
     return NextResponse.json({
       message: 'Website monitoring completed',
-      processed,
-      updated,
-      unchanged,
-      errors,
+      ...summary,
       timestamp: new Date().toISOString()
     })
 
   } catch (error) {
     console.error('Cron Error:', error)
     return NextResponse.json(
-      {
-        error: 'Scheduled monitoring failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: 'Scheduled monitoring failed' },
       { status: 500 }
     )
   }

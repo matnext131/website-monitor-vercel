@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getWebsite } from '../../../lib/db'
 import crypto from 'crypto'
 
+export const dynamic = 'force-dynamic'
+
 // 詳細な診断チェック
 async function debugCheckWebsiteContent(url: string): Promise<{
   contentHash?: string
@@ -62,12 +64,14 @@ async function debugCheckWebsiteContent(url: string): Promise<{
 
   } catch (error: any) {
     let errorMessage = 'Unknown error'
-    
-    if (error.name === 'AbortError') {
+    // AbortSignal.timeout() は AbortError ではなく TimeoutError を投げる
+    const code = error.code || error.cause?.code
+
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') {
       errorMessage = 'タイムアウトエラー'
-    } else if (error.code === 'ENOTFOUND') {
+    } else if (code === 'ENOTFOUND') {
       errorMessage = 'ドメインが見つかりません'
-    } else if (error.code === 'ECONNREFUSED') {
+    } else if (code === 'ECONNREFUSED') {
       errorMessage = '接続が拒否されました'
     } else {
       errorMessage = error.message || 'ネットワークエラー'

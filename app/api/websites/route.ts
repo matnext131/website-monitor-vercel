@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getWebsites, createWebsite, WebsiteCreate } from '../../../lib/db'
 
+// サイト一覧は常に最新のDB内容を返す（静的キャッシュさせない）
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     console.log('API: Starting websites GET request')
@@ -15,6 +18,7 @@ export async function GET() {
       total: websites.length
     })
   } catch (error: any) {
+    // 詳細はサーバーログのみに残し、クライアントへは返さない
     console.error('API Error:', error)
     console.error('Error details:', {
       name: error.name,
@@ -22,12 +26,9 @@ export async function GET() {
       code: error.code,
       stack: error.stack
     })
-    
+
     return NextResponse.json(
-      { 
-        error: 'サーバーエラーが発生しました',
-        details: error.message 
-      },
+      { error: 'サーバーエラーが発生しました' },
       { status: 500 }
     )
   }
@@ -35,7 +36,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, url }: WebsiteCreate = await request.json()
+    const { name, url, monitor_mode }: WebsiteCreate = await request.json()
 
     // バリデーション
     if (!name?.trim() || !url?.trim()) {
@@ -45,19 +46,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // URL形式チェック
+    // URL形式チェック（http/https のみ許可）
+    let parsedUrl: URL
     try {
-      new URL(url)
+      parsedUrl = new URL(url)
     } catch {
       return NextResponse.json(
         { error: '有効なURLを入力してください' },
         { status: 400 }
       )
     }
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      return NextResponse.json(
+        { error: 'URLはhttp:またはhttps:で始まる必要があります' },
+        { status: 400 }
+      )
+    }
 
     const website = await createWebsite({
       name: name.trim(),
-      url: url.trim()
+      url: url.trim(),
+      monitor_mode: monitor_mode === 'content' ? 'content' : 'full'
     })
 
     return NextResponse.json(website, { status: 201 })
