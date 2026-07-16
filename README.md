@@ -6,7 +6,7 @@
 
 - **サイト一覧表示** - 名前・URL・最終チェック時刻・ステータス
 - **URL追加/削除** - 簡単な管理画面
-- **15分間隔自動監視** - Vercel Cron Jobsによる定期チェック
+- **30分間隔自動監視** - GitHub Actionsによる定期チェック（Vercel Cronは日次の予備）
 - **色付きステータスバッジ** - 🟢新規更新 / ⚪️未更新 / 🔴エラー / ⏳待機中
 - **手動チェック機能** - いつでも即座にチェック可能
 - **レスポンシブデザイン** - スマホ・タブレット対応
@@ -16,7 +16,7 @@
 - **フロントエンド**: Next.js 14 + React 18 + TypeScript + Tailwind CSS
 - **バックエンド**: Vercel Serverless Functions
 - **データベース**: Neon PostgreSQL（無料）
-- **定期処理**: Vercel Cron Jobs（15分間隔）
+- **定期処理**: GitHub Actions（30分間隔）＋ Vercel Cron Jobs（日次・予備）
 - **デプロイ**: Vercel
 
 ## 📦 デプロイ手順
@@ -35,7 +35,7 @@
 ### 3. 動作確認
 - サイト追加/削除機能
 - 手動チェック機能
-- 15分後に自動監視開始
+- GitHub Actions の30分間隔実行で自動監視開始（下記「定期監視の仕組み」参照）
 
 ## 🔧 ローカル開発
 
@@ -78,17 +78,25 @@ npm run dev
 - **無料プラン制限**:
   - Neon: 3GB、10万行まで
   - Vercel: 月100GB転送量まで
-- **監視間隔**: 15分（Vercel Cron Jobsの制限）
+- **監視間隔**: 30分（GitHub Actions。スケジュール実行は数分遅延することがある）
 - **同時監視**: 実用的な範囲（~50サイト推奨）
 
-## ⏰ Vercel Cron の設定
+## ⏰ 定期監視の仕組み
 
-自動監視は `vercel.json` の `crons` 設定で動作します。
+定期監視は2系統で動作します。**ページ（ダッシュボード）を開くだけでは監視処理は実行されません**
+（画面はサイト一覧の表示を更新するだけで、チェックは「全自動チェック」ボタンを押したときのみ実行されます）。
 
-- **現在の設定（全プランで動作する安全な設定）**: `"schedule": "0 21 * * *"`
-  - 毎日 21:00 UTC（日本時間 朝6:00）に1回実行
-  - Vercel **Hobby（無料）プランは cron の実行が1日1回まで**という制限があるため、この設定にしています
-- **Pro プランの場合（15分間隔の例）**: `"schedule": "*/15 * * * *"` に変更すると15分間隔で実行できます
+| 系統 | 間隔 | 役割 |
+|---|---|---|
+| **GitHub Actions**（`.github/workflows/website-monitor.yml`） | **30分ごと** | 通常の定期監視（本番APIの `/api/cron` を呼び出す） |
+| **Vercel Cron**（`vercel.json`） | 毎日 21:00 UTC（日本時間 朝6:00） | 予備。Vercel **Hobby（無料）プランは cron 実行が1日1回まで**のため日次のみ |
+
+- GitHub Actions を使うには、リポジトリの **Settings > Secrets and variables > Actions** に
+  Repository Secret **`CRON_SECRET`** の登録が必要です
+- **Vercel と GitHub には同じ `CRON_SECRET` の値を設定してください**（値が異なると401になります）
+- GitHub の Actions タブ →「Website Monitor Cron」→「Run workflow」で手動実行もできます
+- Vercel Pro プランに移行した場合は、`vercel.json` を `"schedule": "*/15 * * * *"` 等に変更して
+  Vercel Cron だけで運用することもできます
 
 ### CRON_SECRET（本番では必須）
 

@@ -36,30 +36,16 @@ export default function HomePage() {
 
   useEffect(() => {
     loadWebsites(true)
-    
-    // 2分ごとに自動チェック実行（テスト用）
-    const autoCheckInterval = setInterval(async () => {
-      console.log('Running auto-check...')
-      try {
-        const response = await fetch('/api/auto-check')
-        const result = await response.json()
-        console.log('Auto-check result:', result)
-        
-        // 自動チェック後にデータを再読み込み
-        loadWebsites()
-      } catch (error) {
-        console.error('Auto-check failed:', error)
-      }
-    }, 2 * 60 * 1000) // 2分 = 120,000ms
-    
-    // 1分ごとにデータ更新（画面リフレッシュ）
+
+    // 1分ごとにサイト一覧を再取得して表示を更新する（表示のみ）。
+    // 監視処理（/api/auto-check）はページからは自動実行しない。
+    // 定期監視は GitHub Actions / Vercel Cron が /api/cron を呼び出して行う。
     const refreshInterval = setInterval(() => {
       console.log('Refreshing website data...')
       loadWebsites()
     }, 1 * 60 * 1000) // 1分 = 60,000ms
-    
+
     return () => {
-      clearInterval(autoCheckInterval)
       clearInterval(refreshInterval)
     }
   }, [])
